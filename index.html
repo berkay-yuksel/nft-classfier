@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NFT CLASSIFYER -V1</title>
+  <style>
+  
+    #image-container img {
+      max-width: 400px;
+      max-height: 400px;
+    }
+
+    .label-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      display: none;
+      max-width: 400px;
+    }
+
+    .label-bar.show {
+      display: flex;
+    }
+
+    .label-bar .label {
+      width: 100px;
+      text-align: right;
+      margin-right: 10px;
+    }
+
+    .label-bar .bar {
+      height: 20px;
+      border-radius: 10px;
+      background-color: #ddd;
+      flex-grow: 1;
+      position: relative;
+    }
+
+    .label-bar .bar-fill {
+      height: 100%;
+      border-radius: 10px;
+      background-color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    NFT CLASSIFIER
+  </div>
+  <br>
+  <input type="file" id="imageUpload" accept="image/*" />
+  <br>
+  <br>
+  <div id="label-container"></div>
+  <br>
+  <div id="image-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <script type="text/javascript">
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "./";
+
+    let model, labelContainer, maxPredictions;
+
+    // Load the image model and setup event listeners
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      // load the model and metadata
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      // Get the uploaded image file
+      const imageUpload = document.getElementById("imageUpload");
+      imageUpload.addEventListener("change", handleImageUpload);
+
+      labelContainer = document.getElementById("label-container");
+      for (let i = 0; i < maxPredictions; i++) {
+        const labelBar = document.createElement("div");
+        labelBar.className = "label-bar";
+        const label = document.createElement("div");
+        label.className = "label";
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        const barFill = document.createElement("div");
+        barFill.className = "bar-fill";
+        bar.appendChild(barFill);
+        labelBar.appendChild(label);
+        labelBar.appendChild(bar);
+        labelContainer.appendChild(labelBar);
+      }
+    }
+
+    // Handle the image upload event
+    async function handleImageUpload(event) {
+      const image = event.target.files[0];
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        img.onload = async function () {
+          displayImage(img);
+          await predict(img);
+        };
+        img.src = e.target.result;
+      };
+
+      reader.readAsDataURL(image);
+    }
+
+    // Display the uploaded image
+    function displayImage(image) {
+      const imageContainer = document.getElementById("image-container");
+      imageContainer.innerHTML = "";
+      const imgElement = document.createElement("img");
+      imgElement.src = image.src;
+      imageContainer.appendChild(imgElement);
+
+      const labelBars = document.querySelectorAll(".label-bar");
+      for (let i = 0; i < labelBars.length; i++) {
+        labelBars[i].classList.add("show");
+      }
+    }
+
+    // Run the image through the model and display predictions
+    async function predict(image) {
+      const prediction = await model.predict(image);
+      for (let i = 0; i < maxPredictions; i++) {
+        const classPrediction = prediction[i].className;
+        const probability = (prediction[i].probability * 100).toFixed(2);
+        const labelBar = labelContainer.childNodes[i];
+        const label = labelBar.querySelector(".label");
+        const barFill = labelBar.querySelector(".bar-fill");
+
+        label.innerHTML = `${classPrediction}: ${probability}%`;
+        barFill.style.width = `${probability}%`;
+      }
+
+      const resultContainer = document.getElementById("result");
+      resultContainer.innerHTML = "Result: " + prediction[0].className;
+    }
+
+    // Call init() when the page finishes loading
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
