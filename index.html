@@ -1,28 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NFT CLASSIFYER -V1</title>
+  <title>NFT Classifier V1</title>
   <style>
-  
-    #image-container img {
+   body{
+    margin:2em;
+   }
+   body h2,p{
+    margin-block-start: 0.3em;
+    margin-block-end: 0.3em;
+   }
+
+    #body-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-top: 2em;
+     
+    }
+
+    #image-container {
+      flex: 1;
       max-width: 400px;
-      max-height: 400px;
+      margin-right: 10px;
+    }
+
+    #image-container img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    #label-container {
+      flex: 1;
+      width: 100%;
+      margin-top: 1.5em;
     }
 
     .label-bar {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
-      display: none;
       max-width: 400px;
     }
 
-    .label-bar.show {
-      display: flex;
-    }
-
     .label-bar .label {
-      width: 100px;
+      width: 187px;
       text-align: right;
       margin-right: 10px;
     }
@@ -38,21 +60,74 @@
     .label-bar .bar-fill {
       height: 100%;
       border-radius: 10px;
-      background-color: #888;
+    }
+
+    .label-bar .bar-fill.grey {
+      background-color: #ccc;
+    }
+
+    .label-bar .bar-fill.orange {
+      background-color: orange;
+    }
+
+    .label-bar .bar-fill.yellow {
+      background-color: yellow;
+    }
+
+    .label-bar .bar-fill.green {
+      background-color: #4CAF50;
+    }
+
+    #imageUpload {
+      margin-top: 10px;
+    }
+
+    #imageUpload::file-selector-button {
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #imageUpload::file-selector-button:hover {
+      background-color: #45a049;
+    }
+
+    #imageUpload::file-selector-button:active {
+      background-color: #3e874d;
+    }
+
+    #imageUpload.no-image::file-selector-button {
+      background-color: #ccc;
+      cursor: default;
+    }
+
+    #imageUpload.no-image::file-selector-button:hover {
+      background-color: #ccc;
+    }
+
+    footer{
+      margin-top: 3em;
     }
   </style>
 </head>
 <body>
-  <div>
-    NFT CLASSIFIER
+  <div id="main-cointainer">
+<h2>NFT Classifier V1</h2>
+<p>This version has limited solana collections and mediocre accuracy. You can pick jpgs, pngs, webps and gifs but jpgs has the best accuracy. </p>
+   
+<div id="body-container">
+    <div id="image-container">
+      <img id="previewImage" src="https://placehold.co/400" alt="Preview" />
+      <input type="file" id="imageUpload" accept="image/*" />
+    </div>
+    <div id="label-container"></div>
+   </div>
+
   </div>
-  <br>
-  <input type="file" id="imageUpload" accept="image/*" />
-  <br>
-  <br>
-  <div id="label-container"></div>
-  <br>
-  <div id="image-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
@@ -95,12 +170,11 @@
     // Handle the image upload event
     async function handleImageUpload(event) {
       const image = event.target.files[0];
-      const img = new Image();
+      const img = document.getElementById("previewImage");
       const reader = new FileReader();
 
       reader.onload = function (e) {
         img.onload = async function () {
-          displayImage(img);
           await predict(img);
         };
         img.src = e.target.result;
@@ -109,40 +183,53 @@
       reader.readAsDataURL(image);
     }
 
-    // Display the uploaded image
-    function displayImage(image) {
-      const imageContainer = document.getElementById("image-container");
-      imageContainer.innerHTML = "";
-      const imgElement = document.createElement("img");
-      imgElement.src = image.src;
-      imageContainer.appendChild(imgElement);
-
-      const labelBars = document.querySelectorAll(".label-bar");
-      for (let i = 0; i < labelBars.length; i++) {
-        labelBars[i].classList.add("show");
-      }
-    }
-
     // Run the image through the model and display predictions
     async function predict(image) {
       const prediction = await model.predict(image);
+
+      // Sort predictions by probability (descending order)
+      const sortedPrediction = prediction.sort((a, b) => b.probability - a.probability);
+
       for (let i = 0; i < maxPredictions; i++) {
-        const classPrediction = prediction[i].className;
-        const probability = (prediction[i].probability * 100).toFixed(2);
+        const classPrediction = sortedPrediction[i].className;
+        const probability = (sortedPrediction[i].probability * 100).toFixed(2);
         const labelBar = labelContainer.childNodes[i];
         const label = labelBar.querySelector(".label");
         const barFill = labelBar.querySelector(".bar-fill");
 
         label.innerHTML = `${classPrediction}: ${probability}%`;
         barFill.style.width = `${probability}%`;
+        setBarColor(barFill, probability);
       }
+    }
 
-      const resultContainer = document.getElementById("result");
-      resultContainer.innerHTML = "Result: " + prediction[0].className;
+    // Set the color of the bar based on the probability
+    function setBarColor(barFill, probability) {
+      barFill.classList.remove("grey", "orange", "yellow", "green");
+
+      if (probability < 3) {
+        barFill.classList.add("grey");
+      } else if (probability >= 3 && probability < 10) {
+        barFill.classList.add("orange");
+      } else if (probability >= 10 && probability < 90) {
+        barFill.classList.add("yellow");
+      } else {
+        barFill.classList.add("green");
+      }
     }
 
     // Call init() when the page finishes loading
     window.addEventListener('load', init);
+
+    // Add event listener to update button style when no image is selected
+    const imageUpload = document.getElementById("imageUpload");
+    imageUpload.addEventListener("change", function() {
+      if (imageUpload.files.length === 0) {
+        imageUpload.classList.add("no-image");
+      } else {
+        imageUpload.classList.remove("no-image");
+      }
+    });
   </script>
 </body>
 </html>
